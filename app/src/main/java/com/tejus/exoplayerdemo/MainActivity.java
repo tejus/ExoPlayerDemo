@@ -27,6 +27,29 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mPlayerView = findViewById(R.id.player_view);
+        //mPlayer.setPlayWhenReady(true);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        /* Marshmallow supports multi-window, so initialise the player in onStart instead of onResume
+         * Also release the player in the respective lifecycle end calls.
+         */
+        if (Util.SDK_INT >= 24) {
+            initialisePlayer();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (Util.SDK_INT < 24) {
+            initialisePlayer();
+        }
+    }
+
+    private void initialisePlayer() {
         String userAgent = Util.getUserAgent(this, "ExoPlayerDemo");
 
         mPlayer = ExoPlayerFactory.newSimpleInstance(this);
@@ -39,13 +62,26 @@ public class MainActivity extends AppCompatActivity {
         ExtractorMediaSource extractorMediaSource = new ExtractorMediaSource.Factory(httpSourceFactory)
                 .createMediaSource(Uri.parse("https://d17h27t6h515a5.cloudfront.net/topher/2017/April/58ffd974_-intro-creampie/-intro-creampie.mp4"));
         mPlayer.prepare(extractorMediaSource);
-        //mPlayer.setPlayWhenReady(true);
+    }
+
+    private void releasePlayer() {
+        mPlayer.release();
+        mPlayer = null;
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        mPlayer.release();
-        mPlayer = null;
+    protected void onPause() {
+        super.onPause();
+        if (Util.SDK_INT < 24) {
+            releasePlayer();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (Util.SDK_INT >= 24) {
+            releasePlayer();
+        }
     }
 }
