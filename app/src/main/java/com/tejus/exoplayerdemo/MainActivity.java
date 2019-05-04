@@ -4,6 +4,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 
+import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
@@ -17,9 +18,13 @@ import com.google.android.exoplayer2.util.Util;
 public class MainActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
+    private static final String CURRENT_POSITION_KEY = "current_position";
+    private static final String CURRENT_WINDOW_KEY = "current_window";
 
     private PlayerView mPlayerView;
     private SimpleExoPlayer mPlayer;
+    private long mCurrentPosition;
+    private int mCurrentWindowIndex;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,7 +32,14 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mPlayerView = findViewById(R.id.player_view);
-        //mPlayer.setPlayWhenReady(true);
+
+        if (savedInstanceState != null) {
+            mCurrentPosition = savedInstanceState.getLong(CURRENT_POSITION_KEY);
+            mCurrentWindowIndex = savedInstanceState.getInt(CURRENT_WINDOW_KEY);
+        } else {
+            mCurrentPosition = C.TIME_UNSET;
+            mCurrentWindowIndex = C.INDEX_UNSET;
+        }
     }
 
     @Override
@@ -61,10 +73,20 @@ public class MainActivity extends AppCompatActivity {
         DefaultHttpDataSourceFactory httpSourceFactory = new DefaultHttpDataSourceFactory(userAgent);
         ExtractorMediaSource extractorMediaSource = new ExtractorMediaSource.Factory(httpSourceFactory)
                 .createMediaSource(Uri.parse("https://d17h27t6h515a5.cloudfront.net/topher/2017/April/58ffd974_-intro-creampie/-intro-creampie.mp4"));
-        mPlayer.prepare(extractorMediaSource);
+
+        if (mCurrentPosition != C.TIME_UNSET) {
+            mPlayer.seekTo(mCurrentWindowIndex, mCurrentPosition);
+            mPlayer.prepare(mediaSource, false, false);
+        } else {
+            mPlayer.prepare(mediaSource);
+        }
+
+        mPlayer.setPlayWhenReady(true);
     }
 
     private void releasePlayer() {
+        mCurrentPosition = mPlayer.getCurrentPosition();
+        mCurrentWindowIndex = mPlayer.getCurrentWindowIndex();
         mPlayer.release();
         mPlayer = null;
     }
@@ -83,5 +105,12 @@ public class MainActivity extends AppCompatActivity {
         if (Util.SDK_INT >= 24) {
             releasePlayer();
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putLong(CURRENT_POSITION_KEY, mCurrentPosition);
+        outState.putInt(CURRENT_WINDOW_KEY, mCurrentWindowIndex);
     }
 }
