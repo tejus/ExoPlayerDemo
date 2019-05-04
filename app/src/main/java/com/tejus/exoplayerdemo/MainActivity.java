@@ -41,4 +41,11 @@ public class MainActivity extends AppCompatActivity {
         mPlayer.prepare(extractorMediaSource);
         //mPlayer.setPlayWhenReady(true);
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mPlayer.release();
+        mPlayer = null;
+    }
 }
