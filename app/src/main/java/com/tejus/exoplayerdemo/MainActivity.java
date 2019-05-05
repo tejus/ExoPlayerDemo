@@ -10,6 +10,7 @@ import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.ui.PlayerView;
@@ -95,6 +96,13 @@ public class MainActivity extends AppCompatActivity {
         mPlayer = ExoPlayerFactory.newSimpleInstance(this);
         mPlayerView.setPlayer(mPlayer);
         mPlayer.addListener(new ExoEventCallback());
+
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.CONTENT_TYPE_SPEECH)
+                .build();
+        mPlayer.setAudioAttributes(audioAttributes, true);
+
         DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, userAgent);
         MediaSource mediaSource = new ExtractorMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(Uri.parse("asset:///-intro-creampie.mp4"));
