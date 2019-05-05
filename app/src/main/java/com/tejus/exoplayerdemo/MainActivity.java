@@ -20,11 +20,13 @@ public class MainActivity extends AppCompatActivity {
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
     private static final String CURRENT_POSITION_KEY = "current_position";
     private static final String CURRENT_WINDOW_KEY = "current_window";
+    private static final String PLAY_WHEN_READY_KEY = "play_when_ready";
 
     private PlayerView mPlayerView;
     private SimpleExoPlayer mPlayer;
     private long mCurrentPosition;
     private int mCurrentWindowIndex;
+    private boolean mPlayWhenReady;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,9 +38,11 @@ public class MainActivity extends AppCompatActivity {
         if (savedInstanceState != null) {
             mCurrentPosition = savedInstanceState.getLong(CURRENT_POSITION_KEY);
             mCurrentWindowIndex = savedInstanceState.getInt(CURRENT_WINDOW_KEY);
+            mPlayWhenReady = savedInstanceState.getBoolean(PLAY_WHEN_READY_KEY);
         } else {
             mCurrentPosition = C.TIME_UNSET;
             mCurrentWindowIndex = C.INDEX_UNSET;
+            mPlayWhenReady = false;
         }
     }
 
@@ -81,12 +85,13 @@ public class MainActivity extends AppCompatActivity {
             mPlayer.prepare(mediaSource);
         }
 
-        mPlayer.setPlayWhenReady(true);
+        mPlayer.setPlayWhenReady(mPlayWhenReady);
     }
 
     private void releasePlayer() {
         mCurrentPosition = mPlayer.getCurrentPosition();
         mCurrentWindowIndex = mPlayer.getCurrentWindowIndex();
+        mPlayWhenReady = mPlayer.getPlayWhenReady();
         mPlayer.release();
         mPlayer = null;
     }
@@ -112,5 +117,6 @@ public class MainActivity extends AppCompatActivity {
         super.onSaveInstanceState(outState);
         outState.putLong(CURRENT_POSITION_KEY, mCurrentPosition);
         outState.putInt(CURRENT_WINDOW_KEY, mCurrentWindowIndex);
+        outState.putBoolean(PLAY_WHEN_READY_KEY, mPlayWhenReady);
     }
 }
