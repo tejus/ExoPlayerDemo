@@ -2,10 +2,13 @@ package com.tejus.exoplayerdemo;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
 
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayerFactory;
+import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -27,6 +30,8 @@ public class MainActivity extends AppCompatActivity {
     private long mCurrentPosition;
     private int mCurrentWindowIndex;
     private boolean mPlayWhenReady;
+    private MediaSessionCompat mMediaSession;
+    private PlaybackStateCompat.Builder mStateBuilder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
             mCurrentWindowIndex = C.INDEX_UNSET;
             mPlayWhenReady = false;
         }
+
+        initialiseMediaSession();
     }
 
     @Override
@@ -65,11 +72,29 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void initialiseMediaSession() {
+        mMediaSession = new MediaSessionCompat(this, LOG_TAG);
+        mMediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
+                MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
+        mMediaSession.setMediaButtonReceiver(null);
+        mStateBuilder = new PlaybackStateCompat.Builder()
+                .setActions(PlaybackStateCompat.ACTION_PLAY |
+                        PlaybackStateCompat.ACTION_PAUSE |
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE |
+                        PlaybackStateCompat.ACTION_FAST_FORWARD |
+                        PlaybackStateCompat.ACTION_REWIND |
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS);
+        mMediaSession.setPlaybackState(mStateBuilder.build());
+        mMediaSession.setCallback(new MediaSessionCallback());
+        mMediaSession.setActive(true);
+    }
+
     private void initialisePlayer() {
         String userAgent = Util.getUserAgent(this, "ExoPlayerDemo");
 
         mPlayer = ExoPlayerFactory.newSimpleInstance(this);
         mPlayerView.setPlayer(mPlayer);
+        mPlayer.addListener(new ExoEventCallback());
         DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, userAgent);
         MediaSource mediaSource = new ExtractorMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(Uri.parse("asset:///-intro-creampie.mp4"));
@@ -96,6 +121,51 @@ public class MainActivity extends AppCompatActivity {
         mPlayer = null;
     }
 
+    private class MediaSessionCallback extends MediaSessionCompat.Callback {
+        @Override
+        public void onPlay() {
+            mPlayWhenReady = true;
+            mPlayer.setPlayWhenReady(mPlayWhenReady);
+        }
+
+        @Override
+        public void onPause() {
+            mPlayWhenReady = false;
+            mPlayer.setPlayWhenReady(mPlayWhenReady);
+        }
+
+        @Override
+        public void onFastForward() {
+            mPlayer.seekTo(mPlayer.getCurrentPosition() + 5000);
+        }
+
+        @Override
+        public void onRewind() {
+            mPlayer.seekTo(mPlayer.getCurrentPosition() - 5000);
+        }
+
+        @Override
+        public void onSkipToPrevious() {
+            mPlayWhenReady = false;
+            mPlayer.setPlayWhenReady(mPlayWhenReady);
+            mPlayer.seekTo(0);
+        }
+    }
+
+    private class ExoEventCallback implements Player.EventListener {
+        @Override
+        public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
+            if (playbackState == Player.STATE_READY && playWhenReady) {
+                mStateBuilder.setState(PlaybackStateCompat.STATE_PLAYING,
+                        mPlayer.getCurrentPosition(), 1f);
+            } else if (playbackState == Player.STATE_READY) {
+                mStateBuilder.setState(PlaybackStateCompat.STATE_PAUSED,
+                        mPlayer.getCurrentPosition(), 1f);
+            }
+            mMediaSession.setPlaybackState(mStateBuilder.build());
+        }
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -118,5 +188,11 @@ public class MainActivity extends AppCompatActivity {
         outState.putLong(CURRENT_POSITION_KEY, mCurrentPosition);
         outState.putInt(CURRENT_WINDOW_KEY, mCurrentWindowIndex);
         outState.putBoolean(PLAY_WHEN_READY_KEY, mPlayWhenReady);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mMediaSession.setActive(false);
     }
 }
