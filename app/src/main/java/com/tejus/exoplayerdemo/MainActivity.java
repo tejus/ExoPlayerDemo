@@ -1,7 +1,18 @@
 package com.tejus.exoplayerdemo;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.RequiresApi;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -25,14 +36,16 @@ public class MainActivity extends AppCompatActivity {
     private static final String CURRENT_POSITION_KEY = "current_position";
     private static final String CURRENT_WINDOW_KEY = "current_window";
     private static final String PLAY_WHEN_READY_KEY = "play_when_ready";
+    private static final String NOTIFICATION_CHANNEL_ID = "Video";
 
     private PlayerView mPlayerView;
     private SimpleExoPlayer mPlayer;
     private long mCurrentPosition;
     private int mCurrentWindowIndex;
     private boolean mPlayWhenReady;
-    private MediaSessionCompat mMediaSession;
+    private static MediaSessionCompat mMediaSession;
     private PlaybackStateCompat.Builder mStateBuilder;
+    NotificationManager mNotificationManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
             mPlayWhenReady = false;
         }
 
+        mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         initialiseMediaSession();
     }
 
@@ -122,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void releasePlayer() {
+        mNotificationManager.cancelAll();
         mCurrentPosition = mPlayer.getCurrentPosition();
         mCurrentWindowIndex = mPlayer.getCurrentWindowIndex();
         mPlayWhenReady = mPlayer.getPlayWhenReady();
@@ -171,6 +186,70 @@ public class MainActivity extends AppCompatActivity {
                         mPlayer.getCurrentPosition(), 1f);
             }
             mMediaSession.setPlaybackState(mStateBuilder.build());
+            showNotification(mStateBuilder.build());
+        }
+    }
+
+    private void showNotification(PlaybackStateCompat playbackState) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createNotificationChannel();
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
+
+        int icon;
+        String playPause;
+        if (playbackState.getState() == PlaybackStateCompat.STATE_PLAYING) {
+            icon = R.drawable.exo_controls_pause;
+            playPause = "Pause";
+        } else {
+            icon = R.drawable.exo_controls_play;
+            playPause = "Play";
+        }
+
+        NotificationCompat.Action playPauseAction = new NotificationCompat.Action(
+                icon, playPause,
+                MediaButtonReceiver.buildMediaButtonPendingIntent(this,
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE)
+        );
+
+        NotificationCompat.Action restartAction = new NotificationCompat.Action(
+                R.drawable.exo_controls_previous, "Restart",
+                MediaButtonReceiver.buildMediaButtonPendingIntent(this,
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+        );
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
+                new Intent(this, MainActivity.class), 0);
+
+        builder.setContentTitle("Title goes here")
+                .setContentText("Text goes here")
+                .setContentIntent(pendingIntent)
+                .setSmallIcon(R.drawable.exo_icon_play)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .addAction(restartAction)
+                .addAction(playPauseAction)
+                .setStyle(new android.support.v4.media.app.NotificationCompat.MediaStyle()
+                        .setMediaSession(mMediaSession.getSessionToken())
+                        .setShowActionsInCompactView(0, 1));
+
+        mNotificationManager.notify(0, builder.build());
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private void createNotificationChannel() {
+        NotificationChannel mChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, "Video", NotificationManager.IMPORTANCE_LOW);
+        mChannel.setDescription("Video playback");
+        mChannel.setShowBadge(false);
+        mChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        mNotificationManager.createNotificationChannel(mChannel);
+    }
+
+    public static class MediaReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            MediaButtonReceiver.handleIntent(mMediaSession, intent);
         }
     }
 
