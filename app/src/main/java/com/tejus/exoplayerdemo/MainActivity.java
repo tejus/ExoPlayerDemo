@@ -98,7 +98,8 @@ public class MainActivity extends AppCompatActivity {
                         PlaybackStateCompat.ACTION_PLAY_PAUSE |
                         PlaybackStateCompat.ACTION_FAST_FORWARD |
                         PlaybackStateCompat.ACTION_REWIND |
-                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS);
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
+                        PlaybackStateCompat.ACTION_STOP);
         mMediaSession.setPlaybackState(mStateBuilder.build());
         mMediaSession.setCallback(new MediaSessionCallback());
         mMediaSession.setActive(true);
@@ -173,6 +174,11 @@ public class MainActivity extends AppCompatActivity {
             mPlayer.setPlayWhenReady(mPlayWhenReady);
             mPlayer.seekTo(0);
         }
+
+        @Override
+        public void onStop() {
+            this.onSkipToPrevious();
+        }
     }
 
     private class ExoEventCallback implements Player.EventListener {
@@ -229,6 +235,8 @@ public class MainActivity extends AppCompatActivity {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .addAction(restartAction)
                 .addAction(playPauseAction)
+                .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(this,
+                        PlaybackStateCompat.ACTION_STOP))
                 .setStyle(new android.support.v4.media.app.NotificationCompat.MediaStyle()
                         .setMediaSession(mMediaSession.getSessionToken())
                         .setShowActionsInCompactView(0, 1));
