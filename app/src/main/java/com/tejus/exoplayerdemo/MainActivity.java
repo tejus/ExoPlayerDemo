@@ -89,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
         mPreviewFrame.setVisibility(View.GONE);
         mPlayerView.setVisibility(View.VISIBLE);
         mPlayerInstance.play(VIDEO_URL);
+        isPlayerInitialised = true;
     }
 
     private void initialisePreview() {
@@ -122,10 +123,8 @@ public class MainActivity extends AppCompatActivity {
         return bitmap;
     }
 
-    private void closePlayer() {
-        mPreviewFrame.setVisibility(View.VISIBLE);
-        mPlayerView.setVisibility(View.GONE);
-        Bundle bundle = mPlayerInstance.close();
+    private void stopPlayer() {
+        Bundle bundle = mPlayerInstance.stop();
         mCurrentPosition = bundle.getLong(CURRENT_POSITION_KEY);
         mCurrentWindowIndex = bundle.getInt(CURRENT_WINDOW_KEY);
         mPlayWhenReady = bundle.getBoolean(PLAY_WHEN_READY_KEY);
@@ -135,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         if (Util.SDK_INT < 24) {
-            mPlayerInstance.stop();
+            stopPlayer();
         }
     }
 
@@ -143,14 +142,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         if (Util.SDK_INT >= 24) {
-            mPlayerInstance.stop();
+            stopPlayer();
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        closePlayer();
+        mPlayerInstance.close();
     }
 
     @Override

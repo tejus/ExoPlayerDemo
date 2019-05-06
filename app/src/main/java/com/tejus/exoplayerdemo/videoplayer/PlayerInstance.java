@@ -259,16 +259,16 @@ public class PlayerInstance {
         initialisePlayer();
     }
 
-    public void stop() {
+    public Bundle stop() {
         releasePlayer();
-    }
-
-    public Bundle close() {
-        mMediaSession.setActive(false);
         Bundle bundle = new Bundle();
         bundle.putLong(CURRENT_POSITION_KEY, mCurrentPosition);
         bundle.putInt(CURRENT_WINDOW_KEY, mCurrentWindowIndex);
         bundle.putBoolean(PLAY_WHEN_READY_KEY, mPlayWhenReady);
         return bundle;
+    }
+
+    public void close() {
+        mMediaSession.setActive(false);
     }
 }
