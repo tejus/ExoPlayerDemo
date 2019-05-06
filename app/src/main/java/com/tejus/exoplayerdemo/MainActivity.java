@@ -7,6 +7,8 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -16,6 +18,9 @@ import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.View;
+import android.widget.ImageView;
 
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayerFactory;
@@ -30,6 +35,8 @@ import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
 
+import java.util.HashMap;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
@@ -37,7 +44,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String CURRENT_WINDOW_KEY = "current_window";
     private static final String PLAY_WHEN_READY_KEY = "play_when_ready";
     private static final String NOTIFICATION_CHANNEL_ID = "Video";
+    private static final String VIDEO_URL = "https://d17h27t6h515a5.cloudfront.net/topher/2017/April/58ffda20_7-add-cream-mix-creampie/7-add-cream-mix-creampie.mp4";
 
+    private ImageView mImageView;
+    private boolean isPlayerInitialised;
     private PlayerView mPlayerView;
     private SimpleExoPlayer mPlayer;
     private long mCurrentPosition;
@@ -52,16 +62,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mImageView = findViewById(R.id.iv_preview);
         mPlayerView = findViewById(R.id.player_view);
 
         if (savedInstanceState != null) {
             mCurrentPosition = savedInstanceState.getLong(CURRENT_POSITION_KEY);
             mCurrentWindowIndex = savedInstanceState.getInt(CURRENT_WINDOW_KEY);
             mPlayWhenReady = savedInstanceState.getBoolean(PLAY_WHEN_READY_KEY);
+            isPlayerInitialised = true;
         } else {
             mCurrentPosition = C.TIME_UNSET;
             mCurrentWindowIndex = C.INDEX_UNSET;
             mPlayWhenReady = false;
+            isPlayerInitialised = false;
         }
 
         mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -74,20 +87,37 @@ public class MainActivity extends AppCompatActivity {
         /* Marshmallow supports multi-window, so initialise the player in onStart instead of onResume
          * Also release the player in the respective lifecycle end calls.
          */
-        if (Util.SDK_INT >= 24) {
+        if (Util.SDK_INT >= 24 && isPlayerInitialised) {
             initialisePlayer();
+        } else {
+            initialisePreview();
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (Util.SDK_INT < 24) {
+        if (Util.SDK_INT < 24 && isPlayerInitialised) {
             initialisePlayer();
+        } else {
+            initialisePreview();
         }
     }
 
+    private void initialisePreview() {
+        Log.d(LOG_TAG, "initialisePreview()");
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            Bitmap image = getVideoBitmap(VIDEO_URL);
+            AppExecutors.getInstance().mainThread().execute(() ->
+                    mImageView.setImageBitmap(image));
+        });
+        mImageView.setOnClickListener(v -> {
+            initialisePlayer();
+        });
+    }
+
     private void initialiseMediaSession() {
+        Log.d(LOG_TAG, "initialiseMediaSession()");
         mMediaSession = new MediaSessionCompat(this, LOG_TAG);
         mMediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
                 MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
@@ -106,6 +136,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initialisePlayer() {
+        mPlayerView.setVisibility(View.VISIBLE);
+        mImageView.setVisibility(View.GONE);
+        Log.d(LOG_TAG, "initialisePlayer()");
         String userAgent = Util.getUserAgent(this, "ExoPlayerDemo");
 
         mPlayer = ExoPlayerFactory.newSimpleInstance(this);
@@ -124,16 +157,36 @@ public class MainActivity extends AppCompatActivity {
 
         DefaultHttpDataSourceFactory httpSourceFactory = new DefaultHttpDataSourceFactory(userAgent);
         ExtractorMediaSource extractorMediaSource = new ExtractorMediaSource.Factory(httpSourceFactory)
-                .createMediaSource(Uri.parse("https://d17h27t6h515a5.cloudfront.net/topher/2017/April/58ffd974_-intro-creampie/-intro-creampie.mp4"));
+                .createMediaSource(Uri.parse(VIDEO_URL));
 
         if (mCurrentPosition != C.TIME_UNSET) {
             mPlayer.seekTo(mCurrentWindowIndex, mCurrentPosition);
-            mPlayer.prepare(mediaSource, false, false);
+            mPlayer.prepare(extractorMediaSource, false, false);
         } else {
-            mPlayer.prepare(mediaSource);
+            mPlayer.prepare(extractorMediaSource);
         }
 
+        mPlayWhenReady = true;
         mPlayer.setPlayWhenReady(mPlayWhenReady);
+    }
+
+    private Bitmap getVideoBitmap(String path) {
+        Log.d(LOG_TAG, "getVideoBitmap()");
+        Bitmap bitmap = null;
+        MediaMetadataRetriever retriever = null;
+
+        try {
+            retriever = new MediaMetadataRetriever();
+            retriever.setDataSource(path, new HashMap<>());
+            bitmap = retriever.getFrameAtTime();
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Exception caught in getVideoBitmap: " + e.getMessage());
+        } finally {
+            if (null != retriever) {
+                retriever.release();
+            }
+        }
+        return bitmap;
     }
 
     private void releasePlayer() {
