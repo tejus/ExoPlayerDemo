@@ -241,11 +241,13 @@ public class PlayerInstance {
 
     private void releasePlayer() {
         mNotificationManager.cancelAll();
-        mCurrentPosition = mPlayer.getCurrentPosition();
-        mCurrentWindowIndex = mPlayer.getCurrentWindowIndex();
-        mPlayWhenReady = mPlayer.getPlayWhenReady();
-        mPlayer.release();
-        mPlayer = null;
+        if (mPlayer != null) {
+            mCurrentPosition = mPlayer.getCurrentPosition();
+            mCurrentWindowIndex = mPlayer.getCurrentWindowIndex();
+            mPlayWhenReady = mPlayer.getPlayWhenReady();
+            mPlayer.release();
+            mPlayer = null;
+        }
     }
 
     public void play(String uri) {
@@ -257,6 +259,12 @@ public class PlayerInstance {
         }
         mVideoUri = uri;
         initialisePlayer();
+    }
+
+    public void seek(long position, int window) {
+        mCurrentPosition = position;
+        mCurrentWindowIndex = window;
+        mPlayer.seekTo(mCurrentWindowIndex, mCurrentPosition);
     }
 
     public Bundle stop() {
