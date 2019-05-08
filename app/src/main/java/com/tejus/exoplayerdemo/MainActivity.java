@@ -1,8 +1,13 @@
 package com.tejus.exoplayerdemo;
 
+import android.app.Dialog;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.media.MediaMetadataRetriever;
 import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -121,6 +126,33 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return bitmap;
+    }
+
+    public void enableFullscreen(View v) {
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+
+        Fragment prev = getSupportFragmentManager().findFragmentByTag("dialog");
+        if (prev != null) {
+            transaction.remove(prev);
+        }
+
+        DialogFragment fullscreenFragment = FullscreenDialogFragment.newInstance();
+        fullscreenFragment.show(transaction, "dialog");
+    }
+
+    public void switchToFullscreen(PlayerView playerView) {
+        PlayerView.switchTargetView(mPlayerInstance.getPlayer(), mPlayerView, playerView);
+    }
+
+    public void disableFullscreen(PlayerView playerView, Dialog fragment) {
+        PlayerView.switchTargetView(mPlayerInstance.getPlayer(), playerView, mPlayerView);
+        fragment.dismiss();
+
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
     }
 
     private void stopPlayer() {

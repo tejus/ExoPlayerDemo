@@ -123,6 +123,10 @@ public class PlayerInstance {
         }
     }
 
+    public SimpleExoPlayer getPlayer() {
+        return mPlayer;
+    }
+
     private class MediaSessionCallback extends MediaSessionCompat.Callback {
         @Override
         public void onPlay() {
@@ -241,11 +245,13 @@ public class PlayerInstance {
 
     private void releasePlayer() {
         mNotificationManager.cancelAll();
-        mCurrentPosition = mPlayer.getCurrentPosition();
-        mCurrentWindowIndex = mPlayer.getCurrentWindowIndex();
-        mPlayWhenReady = mPlayer.getPlayWhenReady();
-        mPlayer.release();
-        mPlayer = null;
+        if (mPlayer != null) {
+            mCurrentPosition = mPlayer.getCurrentPosition();
+            mCurrentWindowIndex = mPlayer.getCurrentWindowIndex();
+            mPlayWhenReady = mPlayer.getPlayWhenReady();
+            mPlayer.release();
+            mPlayer = null;
+        }
     }
 
     public void play(String uri) {
